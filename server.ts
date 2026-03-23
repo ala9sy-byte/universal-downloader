@@ -1,3 +1,6 @@
+import ytdl from "@distube/ytdl-core";
+
+
 import express from "express";
 import path from "path";
 import cors from "cors";
@@ -7,7 +10,6 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static';
 import axios from "axios";
-import ytdl from "@distube/ytdl-core";
 
 // إعداد الإضافات والمسارات
 puppeteer.use(StealthPlugin());
