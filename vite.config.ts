@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     // التعديل الجذري: تحديد المسار ليعمل داخل مجلد vi2 في الاستضافة العادية
-    base: '/vi2/', 
+    base: './', // تم التغيير ليعمل على Vercel و Hostinger في نفس الوقت
 
     plugins: [
       react(),
