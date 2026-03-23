@@ -1,8 +1,12 @@
+
 {
   "name": "alaa-video-downloader",
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "npx tsx server.ts",
     "start": "npx tsx server.ts",
@@ -10,6 +14,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@distube/ytdl-core": "^4.15.9",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "axios": "^1.6.0",
@@ -29,8 +34,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tsx": "^4.21.0",
-    "vite": "^6.2.0",
-    "ytdl-core": "^4.11.5"
+    "vite": "^6.2.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
