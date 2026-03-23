@@ -24,13 +24,19 @@ app.post("/api/info", async (req, res) => {
       timeout: 10000
     });
 
-    const html = response.data;
+
+
+
+  const html = response.data;
     
-    // البحث عن روابط الفيديو باستخدام Regex (حل جذري لـ govid)
-    const m3u8Regex = /(https?:\/\/[^"']+\.m3u8[^"']*)/g;
-    const mp4Regex = /(https?:\/\/[^"']+\.mp4[^"']*)/g;
+    // تصحيح الـ Regex للبحث عن الروابط بشكل صحيح ومضمون
+    const m3u8Regex = /https?:\/\/[^"'\s]+\.m3u8[^"'\s]*/g;
+    const mp4Regex = /https?:\/\/[^"'\s]+\.mp4[^"'\s]*/g;
     
-    let videoUrl = m3u8Regex.exec(html)?.[1] || mp4Regex.exec(html)?.[1];
+    const m3u8Match = html.match(m3u8Regex);
+    const mp4Match = html.match(mp4Regex);
+    
+    let videoUrl = m3u8Match ? m3u8Match[0] : (mp4Match ? mp4Match[0] : null);
 
     if (videoUrl) {
       const isHLS = videoUrl.includes(".m3u8");
@@ -38,10 +44,12 @@ app.post("/api/info", async (req, res) => {
         title: "فيديو مستخرج بنجاح",
         downloadUrl: videoUrl,
         filename: isHLS ? "video.ts" : "video.mp4",
-        source: isHLS ? "HLS Stream" : "Direct MP4",
+        source: "Govid.live",
         isHLS: isHLS
       });
     }
+
+
 
     res.status(404).json({ error: "لم يتم العثور على رابط فيديو مباشر. تأكد من صحة الرابط." });
   } catch (e) {
