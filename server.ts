@@ -21,12 +21,22 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// في ملف server.ts
+
+// استبدل أي كود CORS قديم بهذا:
 app.use(cors({
-  origin: 'https://eng-alaa.com', // حدد موقعك هنا لضمان الأمان والعمل
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  origin: "*", // يسمح لأي موقع بالاتصال (للتأكد من حل المشكلة)
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
+
+// هام جداً لمتصفح Chrome: التعامل مع طلبات OPTIONS
+app.options("*", (req, res) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.sendStatus(200);
+});
 
 app.use(express.json());
 
