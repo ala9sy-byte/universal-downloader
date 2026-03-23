@@ -14,11 +14,11 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/info`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      });
+     const res = await fetch(`${BACKEND_URL}/api`, { 
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ url }),
+});
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setVideoInfo(data);

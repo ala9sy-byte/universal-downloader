@@ -12,13 +12,13 @@ app.use(express.json());
 app.get("/api", (req, res) => res.send("!السيرفر يعمل بنجاح"));
 
 // 1. استخراج معلومات الفيديو
-app.post("/api/info", async (req, res) => {
+app.post("/api", async (req, res) => {
   let { url } = req.body;
+  
+  // تنظيف4444  الرابط من علامة "=" التي تظهر في صورتك
+  if (url && url.startsWith("=")) url = url.substring(1).trim();
+  
   if (!url) return res.status(400).json({ error: "الرابط مطلوب" });
-
-  // تنظيف الرابط من أي زوائد
-  url = url.trim();
-  if (url.startsWith("=")) url = url.substring(1).trim();
 
   try {
     // دعم يوتيوب من كودك الأصلي
