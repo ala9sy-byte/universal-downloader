@@ -55,15 +55,16 @@ app.get("/api/download", async (req, res) => {
   if (!url) return res.status(400).send("رابط الفيديو مفقود");
 
   try {
-    const videoRes = await axios({
-      method: "get",
-      url: url as string,
-      responseType: "stream",
-      headers: {
-        'Referer': referer || 'https://govid.live/',
-        'User-Agent': 'Mozilla/5.0'
-      }
-    });
+   const videoRes = await axios({
+  method: "get",
+  url: url as string,
+  responseType: "stream",
+  headers: {
+    // نخبر TypeScript هنا أن يعامل القيم كنصوص صريحة
+    'Referer': (referer as string) || 'https://govid.live/',
+    'User-Agent': 'Mozilla/5.0'
+  }
+});
 
     // إعداد الهيدرز لإجبار المتصفح على التحميل بالصيغة المطلوبة
     res.setHeader("Content-Disposition", `attachment; filename="${filename || 'video.ts'}"`);
