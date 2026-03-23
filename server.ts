@@ -1,6 +1,4 @@
 import ytdl from "@distube/ytdl-core";
-
-
 import express from "express";
 import path from "path";
 import cors from "cors";
@@ -21,22 +19,15 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// في ملف server.ts
-
-// استبدل أي كود CORS قديم بهذا:
+// إعدادات CORS الشاملة
 app.use(cors({
-  origin: "*", // يسمح لأي موقع بالاتصال (للتأكد من حل المشكلة)
-  methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+    origin: "*", 
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true
 }));
 
-// هام جداً لمتصفح Chrome: التعامل مع طلبات OPTIONS
-app.options("*", (req, res) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.sendStatus(200);
-});
+app.options("*", cors()); // معالجة Pre-flight لكل المسارات
 
 app.use(express.json());
 
@@ -55,39 +46,40 @@ async function getBrowser() {
     });
 }
 
-// 1. جلب معلومات الفيديو (API Info)
+// 1. جلب معلومات الفيديو
 app.post("/api/info", async (req, res) => {
     let { url } = req.body;
     if (!url) return res.status(400).json({ error: "الرابط مطلوب" });
 
+    let browser;
     try {
         // إذا كان الرابط يوتيوب
         if (ytdl.validateURL(url)) {
             const info = await ytdl.getInfo(url);
             const format = ytdl.chooseFormat(info.formats, { quality: 'highest', filter: 'audioandvideo' });
+            // تنظيف اسم الملف من الرموز غير المسموحة
+            const cleanTitle = info.videoDetails.title.replace(/[^\w\s\u0600-\u06FF]/gi, '');
+            
             return res.json({
                 title: info.videoDetails.title,
                 thumbnail: info.videoDetails.thumbnails[0].url,
                 source: "YouTube",
                 downloadUrl: format.url,
-                filename: `${info.videoDetails.title}.mp4`,
+                filename: `${cleanTitle}.mp4`,
                 isHLS: false
             });
         }
 
-        // إذا كان الرابط من govid أو غيره (استخدام Puppeteer)
-        const browser = await getBrowser();
+        // إذا كان الرابط غير ذلك (استخدام Puppeteer)
+        browser = await getBrowser();
         const page = await browser.newPage();
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
         
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
         
-        // البحث عن روابط m3u8 في السورس
         const content = await page.content();
         const m3u8Match = content.match(/https?:\/\/[^"']+\.m3u8[^"']*/);
-        const pageTitle = await page.title();
-
-        await browser.close();
+        const pageTitle = (await page.title()).replace(/[^\w\s\u0600-\u06FF]/gi, '');
 
         if (m3u8Match) {
             return res.json({
@@ -95,7 +87,7 @@ app.post("/api/info", async (req, res) => {
                 thumbnail: "", 
                 source: "HLS Stream",
                 downloadUrl: m3u8Match[0],
-                filename: "video.mp4",
+                filename: `${pageTitle || 'video'}.mp4`,
                 isHLS: true
             });
         }
@@ -105,6 +97,8 @@ app.post("/api/info", async (req, res) => {
     } catch (error: any) {
         console.error("Error Info:", error.message);
         res.status(500).json({ error: error.message });
+    } finally {
+        if (browser) await browser.close(); // إغلاق المتصفح دائماً لعدم استهلاك الرام
     }
 });
 
@@ -118,14 +112,16 @@ app.get("/api/download", async (req, res) => {
             responseType: 'stream',
             headers: { 'Referer': referer as string || '' }
         });
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        // تأمين اسم الملف في الـ Header
+        const safeFilename = encodeURIComponent(filename as string);
+        res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${safeFilename}`);
         response.data.pipe(res);
     } catch (error) {
         res.status(500).send("خطأ في تحميل الملف");
     }
 });
 
-// 3. مسار تحويل HLS إلى MP4 (Download MP4) لروابط govid
+// 3. مسار تحويل HLS إلى MP4
 app.get("/api/download-mp4", async (req, res) => {
     const { url } = req.query;
     if (!url) return res.status(400).send("URL required");
@@ -133,13 +129,15 @@ app.get("/api/download-mp4", async (req, res) => {
     res.setHeader('Content-Type', 'video/mp4');
     res.setHeader('Content-Disposition', 'attachment; filename="video.mp4"');
 
-    // استخدام FFmpeg للتحويل المباشر وضخه للمتصفح
     ffmpeg(url as string)
         .format('mp4')
         .videoCodec('libx264')
         .audioCodec('aac')
         .outputOptions('-movflags frag_keyframe+empty_moov')
-        .on('error', (err) => console.error('FFmpeg Error:', err))
+        .on('error', (err) => {
+            console.error('FFmpeg Error:', err);
+            if (!res.headersSent) res.status(500).send("خطأ في تحويل الفيديو");
+        })
         .pipe(res, { end: true });
 });
 
