@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Download, Link as LinkIcon, AlertCircle, CheckCircle, Loader2, Play, Info, Copy } from "lucide-react";
+import { Download, Link as LinkIcon, AlertCircle, CheckCircle, Loader2, Play, Copy } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import Hls from "hls.js";
+
+// رابط السيرفر الخاص بك على Vercel - لا تقم بتغييره
+const BACKEND_URL = "https://universal-downloader-virid.vercel.app";
 
 interface VideoInfo {
   title: string;
@@ -45,15 +48,15 @@ export default function App() {
     setVideoInfo(null);
 
     try {
-      // تم تعديل المسار ليعمل مباشرة على Vercel
-      const response = await fetch("/api/info", {
+      // إرسال الطلب لسيرفر Vercel
+      const response = await fetch(`${BACKEND_URL}/api/info`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to fetch video info");
+      if (!response.ok) throw new Error(data.error || "فشل في جلب معلومات الفيديو");
       setVideoInfo(data);
     } catch (err: any) {
       setError(err.message);
@@ -72,35 +75,17 @@ export default function App() {
 
     setDownloading(true);
     try {
-      const referer = url;
-      // تم تعديل المسار ليتناسب مع هيكلية Vercel
-      const downloadUrl = `/api/download?url=${encodeURIComponent(videoInfo.downloadUrl)}&filename=${encodeURIComponent(videoInfo.filename)}&isHLS=${videoInfo.isHLS ? "true" : "false"}&referer=${encodeURIComponent(referer)}`;
+      // التحميل عبر البروكسي لضمان عمله من أي مصدر وبأي صيغة (MP4, TS, etc)
+      const proxyUrl = `${BACKEND_URL}/api/download?url=${encodeURIComponent(videoInfo.downloadUrl)}&filename=${encodeURIComponent(videoInfo.filename)}&referer=${encodeURIComponent(url)}`;
       
       const link = document.createElement("a");
-      link.href = downloadUrl;
+      link.href = proxyUrl;
       link.setAttribute("download", videoInfo.filename);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } catch (err) {
-      setError("فشل في بدء التحميل.");
-    } finally {
-      setTimeout(() => setDownloading(false), 2000);
-    }
-  };
-
-  const handleDownloadMP4 = () => {
-    if (!url || !url.includes("govid.live")) {
-      setError("هذا الخيار متاح فقط لروابط govid.live حالياً.");
-      return;
-    }
-    setDownloading(true);
-    try {
-      // تعديل المسار لـ Vercel
-      const downloadUrl = `/api/download-mp4?url=${encodeURIComponent(url)}`;
-      window.location.href = downloadUrl;
-    } catch (err) {
-      setError("فشل في بدء تحميل MP4.");
+      setError("فشل في بدء التحميل. حاول مرة أخرى.");
     } finally {
       setTimeout(() => setDownloading(false), 2000);
     }
@@ -115,7 +100,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white font-sans selection:bg-emerald-500/30" dir="rtl">
-      {/* الخلفية المزخرفة */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-500/10 rounded-full blur-[120px]" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[120px]" />
@@ -127,10 +111,10 @@ export default function App() {
             <Download className="w-8 h-8 text-emerald-400" />
           </div>
           <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-4 bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-            محمل الفيديو العالمي
+            محمل الفيديو الذكي
           </h1>
           <p className="text-gray-400 text-lg max-w-xl mx-auto">
-            قم بتحميل فيديوهاتك المفضلة من أي موقع بجودة عالية.
+            تحميل مباشر وسريع من أي موقع عبر سيرفرك الخاص.
           </p>
         </motion.div>
 
@@ -175,27 +159,19 @@ export default function App() {
                   ) : (
                     <video ref={videoRef} src={!videoInfo.isHLS ? videoInfo.downloadUrl : undefined} controls className="w-full h-full object-contain" />
                   )}
-                  <div className="absolute top-4 right-4 bg-emerald-500 text-black text-[10px] font-bold px-2 py-1 rounded uppercase tracking-tighter">
-                    {videoInfo.source}
-                  </div>
                 </div>
                 <div className="p-8 md:w-2/3 flex flex-col justify-between text-right">
                   <div>
                     <h2 className="text-2xl font-bold mb-2 line-clamp-2 leading-tight">{videoInfo.title}</h2>
-                    <div className="flex flex-col gap-2 mb-6 text-gray-500 text-sm">
-                        <span className="flex items-center gap-1"><CheckCircle className="w-4 h-4 text-emerald-500" /> جاهز للعمل</span>
+                    <div className="flex items-center gap-1 text-emerald-500 text-sm mb-6">
+                        <CheckCircle className="w-4 h-4" /> جاهز للتحميل من {videoInfo.source}
                     </div>
                   </div>
                   
                   <div className="flex flex-col sm:flex-row gap-3">
                     <button onClick={handleDownload} disabled={downloading} className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-4 rounded-2xl flex items-center justify-center gap-3 transition-all duration-300 shadow-lg shadow-emerald-500/20">
-                      {downloading ? <><Loader2 className="w-6 h-6 animate-spin" /> جاري التحميل...</> : <><Download className="w-6 h-6" /> {videoInfo.isEmbed ? "فتح المشغل" : "تحميل الفيديو"}</>}
+                      {downloading ? <><Loader2 className="w-6 h-6 animate-spin" /> جاري التنزيل...</> : <><Download className="w-6 h-6" /> {videoInfo.isEmbed ? "فتح المصدر" : "تحميل الفيديو"}</>}
                     </button>
-                    {url.includes("govid.live") && (
-                      <button onClick={handleDownloadMP4} disabled={downloading} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 transition-all duration-300 shadow-lg shadow-blue-500/20">
-                        <Download className="w-6 h-6" /> تحميل MP4
-                      </button>
-                    )}
                     <button onClick={copyToClipboard} className="sm:w-auto px-6 bg-white/10 hover:bg-white/20 text-white font-bold py-4 rounded-2xl transition-all duration-300">
                       {copied ? <CheckCircle className="w-6 h-6 text-emerald-500" /> : <Copy className="w-6 h-6" />}
                     </button>
@@ -208,7 +184,7 @@ export default function App() {
       </main>
 
       <footer className="py-10 text-center text-gray-600 text-sm border-t border-white/5">
-        <p>© 2026 محمل الفيديو العالمي • مصمم للتحميل السريع</p>
+        <p>© 2026 محمل الفيديو • eng-alaa.com</p>
       </footer>
     </div>
   );
