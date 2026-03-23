@@ -11,7 +11,7 @@ app.get("/api", (req, res) => {
 });
 
 // 1. نقطة جلب المعلومات (Scraper)
-app.post("/api/info", async (req, res) => {
+app.post(["/api/info", "/api"], async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: "الرابط مطلوب" });
 
