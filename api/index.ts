@@ -8,22 +8,20 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// مسار الاختبار لضمان عمل السيرفر
+app.get("/api", (req, res) => res.send("!السيرفر يعمل بنجاح"));
 
-
-// مسار تجريبي للتأكد من عمل السيرفر
-app.get("/api", (req, res) => res.send("السيرفر يعمل بنجاح!"));
-
-// 1. جلب معلومات الفيديو
-app.post("*", async (req, res) => {
+// 1. استخراج معلومات الفيديو
+app.post("/api/info", async (req, res) => {
   let { url } = req.body;
-  
-  // تنظيف الرابط من علامة "=" الزائدة التي تظهر في صورتك
-  if (url && url.startsWith("=")) url = url.substring(1).trim();
-  
   if (!url) return res.status(400).json({ error: "الرابط مطلوب" });
 
+  // تنظيف الرابط من أي زوائد
+  url = url.trim();
+  if (url.startsWith("=")) url = url.substring(1).trim();
+
   try {
-    // التحقق من يوتيوب
+    // دعم يوتيوب من كودك الأصلي
     if (ytdl.validateURL(url)) {
       const info = await ytdl.getInfo(url);
       const format = ytdl.chooseFormat(info.formats, { quality: "highestvideo", filter: "audioandvideo" });
@@ -36,7 +34,7 @@ app.post("*", async (req, res) => {
       });
     }
 
-    // معالج المواقع العامة (مثل govid.live) باستخدام استخراج الروابط (Regex)
+    // سكرابر متقدم يدعم govid.live والمواقع العامة
     const response = await axios.get(url, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -47,22 +45,18 @@ app.post("*", async (req, res) => {
 
     const html = response.data;
     const $ = cheerio.load(html);
-    let title = $("title").text() || "Video";
-    
-    // البحث عن روابط m3u8 أو mp4 في كود الصفحة والجافا سكريبت
+    const title = $("title").text() || "Video";
+
+    // البحث عن روابط الفيديو (m3u8, mp4) باستخدام Regex
     const m3u8Regex = /https?:\/\/[^"'\s]+\.m3u8[^"'\s]*/g;
     const mp4Regex = /https?:\/\/[^"'\s]+\.mp4[^"'\s]*/g;
     
-    const m3u8Match = html.match(m3u8Regex);
-    const mp4Match = html.match(mp4Regex);
-    
-    let videoUrl = m3u8Match ? m3u8Match[0] : (mp4Match ? mp4Match[0] : null);
+    const videoUrl = html.match(m3u8Regex)?.[0] || html.match(mp4Regex)?.[0];
 
     if (videoUrl) {
       const isHLS = videoUrl.includes(".m3u8");
       return res.json({
         title,
-        thumbnail: "",
         source: isHLS ? "HLS Stream" : "Direct Video",
         downloadUrl: videoUrl,
         filename: isHLS ? "video.ts" : "video.mp4",
@@ -70,35 +64,31 @@ app.post("*", async (req, res) => {
       });
     }
 
-    res.status(404).json({ error: "لم نتمكن من العثور على رابط فيديو مباشر." });
-  } catch (error: any) {
-    res.status(500).json({ error: "فشل في معالجة الرابط." });
+    res.status(404).json({ error: "لم نتمكن من العثور على رابط مباشر." });
+  } catch (e) {
+    res.status(500).json({ error: "فشل السيرفر في معالجة الرابط." });
   }
 });
 
-// 2. بروكسي التحميل (يدعم TS و MP4)
+// 2. بروكسي التحميل الفعلي
 app.get("/api/download", async (req, res) => {
   const { url, filename, referer } = req.query;
-  if (!url) return res.status(400).send("الرابط مطلوب");
-
   try {
     const response = await axios({
       method: "get",
       url: url as string,
       responseType: "stream",
-      headers: {
+      headers: { 
         "User-Agent": "Mozilla/5.0",
         "Referer": (referer as string) || "https://govid.live/"
       }
     });
 
-    const isHLS = (url as string).includes(".m3u8");
-    res.setHeader("Content-Disposition", `attachment; filename="${filename || (isHLS ? 'video.ts' : 'video.mp4')}"`);
-    res.setHeader("Content-Type", isHLS ? "video/mp2t" : "video/mp4");
-    
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Content-Type", (url as string).includes(".m3u8") ? "video/mp2t" : "video/mp4");
     response.data.pipe(res);
-  } catch (error) {
-    res.status(500).send("فشل تحميل الفيديو.");
+  } catch (e) {
+    res.status(500).send("خطأ في جلب ملف التحميل.");
   }
 });
 
