@@ -8,16 +8,19 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+
+
 // مسار تجريبي للتأكد من عمل السيرفر
 app.get("/api", (req, res) => res.send("السيرفر يعمل بنجاح!"));
 
 // 1. جلب معلومات الفيديو
-app.post("/api/info", async (req, res) => {
+app.post("*", async (req, res) => {
   let { url } = req.body;
+  
+  // تنظيف الرابط من علامة "=" الزائدة التي تظهر في صورتك
+  if (url && url.startsWith("=")) url = url.substring(1).trim();
+  
   if (!url) return res.status(400).json({ error: "الرابط مطلوب" });
-
-  url = url.trim();
-  if (url.startsWith("=")) url = url.substring(1).trim();
 
   try {
     // التحقق من يوتيوب
