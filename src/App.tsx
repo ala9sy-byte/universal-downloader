@@ -14,6 +14,11 @@ interface VideoInfo {
 }
 
 export default function App() {
+
+  
+  // === تعديل هنا: ضع رابط الريندر الخاص بك هنا ===
+ const API_BASE_URL = "https://universal-downloader.onrender.com";
+
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +45,6 @@ export default function App() {
   const fetchVideoInfo = async () => {
     if (!url) return;
     
-    // Validation for govid.live
     if (url.includes("govid.live") && !url.startsWith("https://govid.live/e/")) {
       setError("عذراً، يجب أن يبدأ رابط govid بـ https://govid.live/e/");
       return;
@@ -50,10 +54,9 @@ export default function App() {
     setError(null);
     setVideoInfo(null);
 
-    const VERCEL_URL = "https://universal-downloader-virid.vercel.app";
-
     try {
-      const response = await fetch(`${VERCEL_URL}/api/info`, {
+      // تم تعديل الرابط هنا ليتصل بالريندر
+      const response = await fetch(`${API_BASE_URL}/api/info`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
@@ -73,20 +76,16 @@ export default function App() {
     if (!videoInfo) return;
     
     if (videoInfo.isEmbed) {
-      // For Embeds, we open the source link
       window.open(videoInfo.downloadUrl, "_blank");
       return;
     }
 
-    const VERCEL_URL = "https://universal-downloader-virid.vercel.app";
-
     setDownloading(true);
     try {
-      // Use the original URL as referer for the download request
       const referer = url;
-      const downloadUrl = `${VERCEL_URL}/api/download?url=${encodeURIComponent(videoInfo.downloadUrl)}&filename=${encodeURIComponent(videoInfo.filename)}&isHLS=${videoInfo.isHLS ? "true" : "false"}&referer=${encodeURIComponent(referer)}`;
+      // تم تعديل الرابط هنا ليتصل بالريندر
+      const downloadUrl = `${API_BASE_URL}/api/download?url=${encodeURIComponent(videoInfo.downloadUrl)}&filename=${encodeURIComponent(videoInfo.filename)}&isHLS=${videoInfo.isHLS ? "true" : "false"}&referer=${encodeURIComponent(referer)}`;
       
-      // Trigger download by creating a temporary link
       const link = document.createElement("a");
       link.href = downloadUrl;
       link.setAttribute("download", videoInfo.filename);
@@ -105,11 +104,10 @@ export default function App() {
       setError("هذا الخيار متاح فقط لروابط govid.live حالياً.");
       return;
     }
-    const VERCEL_URL = "https://universal-downloader-virid.vercel.app";
-
     setDownloading(true);
     try {
-      const downloadUrl = `${VERCEL_URL}/api/download-mp4?url=${encodeURIComponent(url)}`;
+      // تم تعديل الرابط هنا ليتصل بالريندر
+      const downloadUrl = `${API_BASE_URL}/api/download-mp4?url=${encodeURIComponent(url)}`;
       window.location.href = downloadUrl;
     } catch (err) {
       setError("فشل في بدء تحميل MP4.");
