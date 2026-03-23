@@ -6,6 +6,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.get("/api", (req, res) => {
+  res.send("السيرفر يعمل بنجاح!");
+});
+
 // 1. نقطة جلب المعلومات (Scraper)
 app.post("/api/info", async (req, res) => {
   const { url } = req.body;
