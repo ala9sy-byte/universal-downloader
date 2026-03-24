@@ -41,7 +41,7 @@ async function getBrowser() {
             '--single-process',
             '--no-zygote'
         ],
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome-stable',
+        // امسح سطر executablePath تماماً
         headless: true
     });
 }
